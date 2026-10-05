@@ -1,0 +1,6 @@
+node_modules
+.env
+prisma.config.ts
+schema.prisma
+migration_lock.toml
+migration.sql
