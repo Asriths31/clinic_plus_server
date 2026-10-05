@@ -51,17 +51,17 @@ The backend exposes a RESTful API under the `/api` prefix. All protected routes 
 
 ### Authentication Endpoints
 
-*   **`POST /api/login`**
+*   **`POST /api/auth/login`**
     *   *Usage*: Authenticates a user and sets the JWT cookie.
     *   *Example Payload*: 
         ```json
         { "email": "admin@clinic.com", "password": "Admin@123" }
         ```
-*   **`POST /api/register`**
+*   **`POST /api/auth/register`**
     *   *Usage*: Registers a new patient.
-*   **`POST /api/logout`**
+*   **`POST /api/auth/logout`**
     *   *Usage*: Clears the authentication cookie.
-*   **`GET /api/me`**
+*   **`GET /api/auth/me`**
     *   *Usage*: Returns the currently authenticated user's profile and role.
 
 ### Appointment Endpoints
