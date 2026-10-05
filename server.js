@@ -39,6 +39,23 @@ export const pool=new Pool({
     connectionString:process.env.DATABASE_URI
 })
 
+export const connectDB = async () => {
+  try {
+    const client = await pool.connect();
+
+    console.log("PostgreSQL database connected successfully");
+
+    client.release();
+  } catch (error) {
+    console.error("PostgreSQL database connection failed");
+    console.error(error.message);
+
+    throw error;
+  }
+};
+
+connectDB()
+
 const PORT=process.env.PORT||2000
 
 app.listen(PORT,()=>console.log(`Server Started on port ${PORT}`))
