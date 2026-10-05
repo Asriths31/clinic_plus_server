@@ -18,10 +18,8 @@ authRouter.get("/me", asyncHandler(authenticateUser), asyncHandler(getCurrentUse
 authRouter.post("/patientLogin", asyncHandler(patientLogin)); // Backward compatible
 
 //-------------------- RBAC Demonstration & Verification Routes -----------------
-// Admin-only route (Doctors deletion, system configuration)
 router.get(
     "/admin-only",
-    asyncHandler(authenticateUser),
     authorizeRoles("ADMIN"),
     (req, res) => {
         res.json({
@@ -32,10 +30,8 @@ router.get(
     }
 );
 
-// Staff-only route (Admin & Receptionist for patient intake & appointment bookings)
 router.get(
     "/staff-only",
-    asyncHandler(authenticateUser),
     authorizeRoles("ADMIN", "RECEPTIONIST"),
     (req, res) => {
         res.json({
@@ -46,10 +42,8 @@ router.get(
     }
 );
 
-// Doctor-only route (Medical notes, doctor schedule)
 router.get(
     "/doctor-only",
-    asyncHandler(authenticateUser),
     authorizeRoles("DOCTOR"),
     (req, res) => {
         res.json({
