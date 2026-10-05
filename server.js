@@ -28,6 +28,8 @@ app.use(cookieParser())
 app.use(express.json())
 
 
+app.get("/health",(req,res)=>{res.status(200).json({success:true,message:"Server Running Successfully"})})
+
 app.use("/api/auth",authRouter)
 app.use("/api",asyncHandler(authenticateUser),router)
 
