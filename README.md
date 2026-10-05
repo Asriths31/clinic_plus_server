@@ -47,7 +47,7 @@ To access the administrative dashboard and oversee the entire clinic operations,
 
 - **API URL**: `https://clinic-plus-server.onrender.com`
 
-The backend exposes a RESTful API under the `/api` prefix. All protected routes require an `HttpOnly` cookie containing a valid JWT.
+The backend exposes a RESTful API under the `/api` prefix. All protected routes require an `HttpOnly` cookie containing a valid JWT. To access the protected routes, ensure you add the cookie to the `Cookie` header (e.g., `Cookie: access_token=<your_jwt_token>`). The JWT token can be available from the "api/login" endpoint
 
 ### Authentication Endpoints
 
@@ -59,6 +59,21 @@ The backend exposes a RESTful API under the `/api` prefix. All protected routes 
         ```
 *   **`POST /api/auth/register`**
     *   *Usage*: Registers a new patient.
+    *   *Example Payload*:
+        ```json
+        {
+          "name": "John Doe",
+          "email": "john@example.com",
+          "password": "SecurePassword123",
+          "role": "PATIENT",
+          "phone": "1234567890",
+          "gender": "Male",
+          "dob": "1990-01-01",
+          "bloodGroup": "O+",
+          "isMarried": false,
+          "address": "123 Main St"
+        }
+        ```
 *   **`POST /api/auth/logout`**
     *   *Usage*: Clears the authentication cookie.
 *   **`GET /api/auth/me`**
@@ -83,6 +98,18 @@ The backend exposes a RESTful API under the `/api` prefix. All protected routes 
         ```
 *   **`PUT /api/appointments/:id`**
     *   *Usage*: Updates an appointment's status (e.g., from `SCHEDULED` to `COMPLETED`) or reschedules it.
+    *   *Example Payload*:
+        ```json
+        {
+          "appointmentDate": "2026-10-16",
+          "startTime": "11:00",
+          "endTime": "11:30",
+          "status": "COMPLETED",
+          "reason": "Follow-up",
+          "patientId": 1,
+          "doctorId": 2
+        }
+        ```
 *   **`DELETE /api/appointments/:id`**
     *   *Usage*: (Admin Only) Hard deletes an appointment.
 
@@ -92,5 +119,15 @@ The backend exposes a RESTful API under the `/api` prefix. All protected routes 
     *   *Usage*: Returns a list of all doctors.
 *   **`POST /api/doctors`**
     *   *Usage*: (Admin Only) Adds a new doctor to the clinic.
+    *   *Example Payload*:
+        ```json
+        {
+          "name": "Dr. Sarah",
+          "email": "sarah@clinic.com",
+          "password": "Password123",
+          "phone": "9876543210",
+          "specialization": "Cardiology"
+        }
+        ```
 *   **`GET /api/patients`**
     *   *Usage*: (Admin & Doctor Only) Returns a list of registered patients.
