@@ -120,10 +120,11 @@ export async function register(req, res) {
   const hashedPassword = bcrypt.hashSync(password, 10);
 
   let createdUser = null;
-  const user=decodeUser(req)
 
 
   if (normalizedRole === "DOCTOR") {
+      const user=decodeUser(req)
+
     if(user.role!=="ADMIN"){
        throw new AppError("Only Admin Can Create A Doctor",403)
     }
@@ -156,6 +157,7 @@ export async function register(req, res) {
     createdUser = patRes.rows[0];
   } else {
     // ADMIN or RECEPTIONIST
+      const user=decodeUser(req)
     if(user.role!=="ADMIN"){
        throw new AppError("Only Admin Can Create A Doctor",403)
     }
