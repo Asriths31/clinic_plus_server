@@ -26,6 +26,10 @@ export async function addDoctor(req, res) {
         throw new AppError("Name, email, and specialization are required", 400);
     }
 
+    if (phone && !/^\d{10}$/.test(phone)) {
+        throw new AppError("Phone number must be exactly 10 digits", 400);
+    }
+
     // Check email uniqueness across doctor, users, and patient tables
     const docCheck = await pool.query(`SELECT id FROM doctor WHERE email = $1`, [email]);
     const userCheck = await pool.query(`SELECT id FROM users WHERE email = $1`, [email]);
@@ -53,6 +57,10 @@ export async function updateDoctor(req, res) {
     const existing = await fetchDoctorById(id);
     if (existing.rows.length === 0) {
         throw new AppError("Doctor not found", 404);
+    }
+
+    if (phone && !/^\d{10}$/.test(phone)) {
+        throw new AppError("Phone number must be exactly 10 digits", 400);
     }
 
     // Check email uniqueness (exclude current doctor)

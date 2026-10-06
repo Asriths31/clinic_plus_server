@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { pool } from "../server.js";
 import { AppError } from "../middleware/error.middleware.js";
+import { decodeUser } from "../middleware/auth.middleware.js";
 
 /**
  * Universal Login:
@@ -65,7 +66,7 @@ export async function login(req, res) {
       email: user.email,
       role: role.toUpperCase()
     },
-    process.env.JWT_ACCESS_SECRET || "default_jwt_secret_clinic",
+    process.env.JWT_ACCESS_SECRET,
     { expiresIn: "24h" }
   );
 
@@ -97,6 +98,10 @@ export async function register(req, res) {
     throw new AppError("Name, email, and password are required", 400);
   }
 
+  if (phone && !/^\d{10}$/.test(phone)) {
+    throw new AppError("Phone number must be exactly 10 digits", 400);
+  }
+
   const validRoles = ["ADMIN", "RECEPTIONIST", "DOCTOR", "PATIENT"];
   const normalizedRole = role.toUpperCase();
   if (!validRoles.includes(normalizedRole)) {
@@ -115,8 +120,14 @@ export async function register(req, res) {
   const hashedPassword = bcrypt.hashSync(password, 10);
 
   let createdUser = null;
+  const user=decodeUser(req)
+
 
   if (normalizedRole === "DOCTOR") {
+    if(user.role!=="ADMIN"){
+       throw new AppError("Only Admin Can Create A Doctor",403)
+    }
+
     const docRes = await pool.query(
       `INSERT INTO doctor(name, email, password, role, phone, specialization)
        VALUES($1, $2, $3, $4, $5, $6)
@@ -145,6 +156,9 @@ export async function register(req, res) {
     createdUser = patRes.rows[0];
   } else {
     // ADMIN or RECEPTIONIST
+    if(user.role!=="ADMIN"){
+       throw new AppError("Only Admin Can Create A Doctor",403)
+    }
     const staffRes = await pool.query(
       `INSERT INTO users(name, email, password, role, phone)
        VALUES($1, $2, $3, $4, $5)
@@ -166,10 +180,11 @@ export async function register(req, res) {
  * Clears the HTTP-Only cookie.
  */
 export async function logout(req, res) {
-  res.clearCookie("access_token", {
-    httpOnly: true,
-    sameSite: "lax"
-  });
+ res.clearCookie("access_token", {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
+});
 
   return res.status(200).json({
     success: true,

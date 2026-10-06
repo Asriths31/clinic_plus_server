@@ -3,7 +3,7 @@ import { asyncHandler } from "./middleware/error.middleware.js";
 import { authenticateUser, authorizeRoles } from "./middleware/auth.middleware.js";
 import { getCurrentUser, login, logout, register } from "./controllers/auth.controller.js";
 import { addDoctor, createDoctorLeave, deleteDoctor, getDoctorById, getDoctors, updateDoctor } from "./controllers/doctor.controller.js";
-import { addPatient, deletePatient, getPatientById, getPatients, patientLogin, updatePatient } from "./controllers/patient.controller.js";
+import { addPatient, deletePatient, getPatientById, getPatients, updatePatient } from "./controllers/patient.controller.js";
 import { createAppointment, deleteAppointment, getAppointmentById, getAppointments, updateAppointment } from "./controllers/appointments.controller.js";
 import { getDashboardStats } from "./controllers/dashboard.controller.js";
 
@@ -15,7 +15,6 @@ authRouter.post("/login", asyncHandler(login));
 authRouter.post("/register", asyncHandler(register));
 authRouter.post("/logout", asyncHandler(logout));
 authRouter.get("/me", asyncHandler(authenticateUser), asyncHandler(getCurrentUser));
-authRouter.post("/patientLogin", asyncHandler(patientLogin)); // Backward compatible
 
 //-------------------- RBAC Demonstration & Verification Routes -----------------
 router.get(
@@ -64,7 +63,7 @@ router.get("/doctors", asyncHandler(getDoctors));
 
 router.use("/doctors",authorizeRoles("DOCTOR","ADMIN"))
 router.get("/doctors/:id", asyncHandler(getDoctorById));
-router.post("/doctors", asyncHandler(addDoctor));
+router.post("/doctors", asyncHandler(register));
 router.put("/doctors/:id", asyncHandler(updateDoctor));
 router.delete("/doctors/:id", asyncHandler(deleteDoctor));
 router.post("/applyLeave", asyncHandler(createDoctorLeave));

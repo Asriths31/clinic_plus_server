@@ -6,49 +6,49 @@ import { AppError } from "../middleware/error.middleware.js"
 
 import jwt from "jsonwebtoken";
 
-export async function patientLogin(req, res) {
-    const { email, password } = req.body;
-    if (!email || !password) {
-        throw new AppError("Please provide email and password", 400);
-    }
-    const result = await pool.query(`SELECT * FROM patient where email=$1`, [email]);
-    const patient = result.rows[0];
-    if (!patient || !patient.password) {
-        throw new AppError("Please Check The Details Correctly", 401);
-    }
-    const isPasswordMatch = bcrypt.compareSync(password, patient.password);
-    if (!isPasswordMatch) {
-        throw new AppError("Please Check The Details Correctly", 401);
-    }
+// export async function patientLogin(req, res) {
+//     const { email, password } = req.body;
+//     if (!email || !password) {
+//         throw new AppError("Please provide email and password", 400);
+//     }
+//     const result = await pool.query(`SELECT * FROM patient where email=$1`, [email]);
+//     const patient = result.rows[0];
+//     if (!patient || !patient.password) {
+//         throw new AppError("Please Check The Details Correctly", 401);
+//     }
+//     const isPasswordMatch = bcrypt.compareSync(password, patient.password);
+//     if (!isPasswordMatch) {
+//         throw new AppError("Please Check The Details Correctly", 401);
+//     }
 
-    const token = jwt.sign(
-        {
-            id: patient.id,
-            name: patient.userName,
-            email: patient.email,
-            role: (patient.role || "PATIENT").toUpperCase()
-        },
-        process.env.JWT_ACCESS_SECRET || "default_jwt_secret_clinic",
-        { expiresIn: "24h" }
-    );
+//     const token = jwt.sign(
+//         {
+//             id: patient.id,
+//             name: patient.userName,
+//             email: patient.email,
+//             role: (patient.role || "PATIENT").toUpperCase()
+//         },
+//         process.env.JWT_ACCESS_SECRET || "default_jwt_secret_clinic",
+//         { expiresIn: "24h" }
+//     );
 
-    res.cookie("access_token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 24 * 60 * 60 * 1000
-    });
+//     res.cookie("access_token", token, {
+//         httpOnly: true,
+//         secure: process.env.NODE_ENV === "production",
+//         sameSite: "lax",
+//         maxAge: 24 * 60 * 60 * 1000
+//     });
 
-    const safePatient = { ...patient };
-    delete safePatient.password;
+//     const safePatient = { ...patient };
+//     delete safePatient.password;
 
-    return res.status(200).json({
-        success: true,
-        message: "Login successful",
-        token,
-        data: safePatient
-    });
-}
+//     return res.status(200).json({
+//         success: true,
+//         message: "Login successful",
+//         token,
+//         data: safePatient
+//     });
+// }
 
 export async function getPatients(req, res) {
     const patients = await fetchPatients();
@@ -60,6 +60,10 @@ export async function addPatient(req, res) {
 
     if (!userName || !email) {
         throw new AppError("Name and email are required", 400);
+    }
+
+    if (phone && !/^\d{10}$/.test(phone)) {
+        throw new AppError("Phone number must be exactly 10 digits", 400);
     }
 
     // Check if email already exists
@@ -101,6 +105,10 @@ export async function updatePatient(req, res) {
     const existing = await fetchPatientById(id);
     if (existing.rows.length === 0) {
         throw new AppError("Patient not found", 404);
+    }
+
+    if (phone && !/^\d{10}$/.test(phone)) {
+        throw new AppError("Phone number must be exactly 10 digits", 400);
     }
 
     // Check email uniqueness (exclude current patient)

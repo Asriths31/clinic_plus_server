@@ -2,14 +2,12 @@ import jwt from "jsonwebtoken";
 import { AppError } from "./error.middleware.js";
 
 
+export function decodeUser(req) {
+  let token = null;
 
-export function decodeUser(req){
-    let token = null;
-
-     if (req.cookies && req.cookies.access_token) {
+  if (req.cookies?.access_token) {
     token = req.cookies.access_token;
-  }
-  else if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+  } else if (req.headers.authorization?.startsWith("Bearer ")) {
     token = req.headers.authorization.split(" ")[1];
   }
 
@@ -17,23 +15,22 @@ export function decodeUser(req){
     throw new AppError("Authentication required. Please log in to access this resource.", 401);
   }
 
-      const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET || "default_jwt_secret_clinic");
-      return decoded
-
-}
-
-export function authenticateUser(req, res, next) {
-
- 
   try {
-    const decoded = decodeUser(req)
-    req.user = decoded;
-    next();
+    return jwt.verify(token, process.env.JWT_ACCESS_SECRET);
   } catch (err) {
     if (err.name === "TokenExpiredError") {
       throw new AppError("Your session has expired. Please log in again.", 401);
     }
     throw new AppError("Invalid authentication token. Please log in again.", 401);
+  }
+}
+
+export function authenticateUser(req, res, next) {
+  try {
+    req.user = decodeUser(req);
+    next();
+  } catch (err) {
+    next(err);
   }
 }
 
