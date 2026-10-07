@@ -33,22 +33,35 @@ export async function getAppointmentById(req, res) {
 }
 
 export async function createAppointment(req, res) {
-    const { appointmentDate, startTime, endTime, reason, patientId, doctorId } = req.body;
+    const { startTime, endTime, reason, patientId, doctorId } = req.body;
 
     // Validate required fields
-    if (!appointmentDate || !startTime || !endTime || !patientId || !doctorId) {
-        throw new AppError("appointmentDate, startTime, endTime, patientId, and doctorId are required", 400);
+    if (!startTime || !endTime || !patientId || !doctorId) {
+        throw new AppError("startTime, endTime, patientId, and doctorId are required", 400);
     }
 
-    // Disallow Sundays (Clinic is closed)
-    const dateObj = new Date(`${appointmentDate}T12:00:00`);
-    if (dateObj.getDay() === 0) {
-        throw new AppError("The clinic is closed on Sundays. Please select a date from Monday to Saturday.", 400);
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw new AppError("Invalid startTime or endTime", 400);
     }
 
     // Validate start time < end time
-    if (startTime >= endTime) {
+    if (start >= end) {
         throw new AppError("Start time must be before end time", 400);
+    }
+
+    // Format start time in Asia/Kolkata timezone to check for Sunday
+    const startFormatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Kolkata",
+        weekday: "long"
+    });
+    const weekday = startFormatter.format(start);
+
+    // Disallow Sundays (Clinic is closed)
+    if (weekday === "Sunday") {
+        throw new AppError("The clinic is closed on Sundays. Please select a date from Monday to Saturday.", 400);
     }
 
     // Check patient exists
@@ -66,24 +79,23 @@ export async function createAppointment(req, res) {
     // Check for overlapping appointments for the same doctor
     const overlap = await checkAppointmentOverlap({
         doctorId,
-        appointmentDate,
-        startTime,
-        endTime,
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
         excludeId: 0
     });
 
     if (overlap) {
         throw new AppError(
-            `Appointment conflicts with an existing appointment (${overlap.start_time} - ${overlap.end_time}). Please choose a different time slot.`,
+            `Appointment conflicts with an existing appointment. Please choose a different time slot.`,
             409
         );
     }
 
     const result = await pool.query(
-        `INSERT INTO appointment("appointmentDate", start_time, end_time, status, reason, "patientId", "doctorId")
-         VALUES($1::date, $2::time, $3::time, 'SCHEDULED', $4, $5, $6)
-         RETURNING id, to_char("appointmentDate", 'YYYY-MM-DD') as "appointmentDate", start_time, end_time, status, reason, "patientId", "doctorId", "createdAt"`,
-        [appointmentDate, startTime, endTime, reason || null, patientId, doctorId]
+        `INSERT INTO appointment("startTime", "endTime", status, reason, "patientId", "doctorId")
+         VALUES($1::timestamptz, $2::timestamptz, 'SCHEDULED', $3, $4, $5)
+         RETURNING id, "startTime", "endTime", status, reason, "patientId", "doctorId", "createdAt"`,
+        [start.toISOString(), end.toISOString(), reason || null, patientId, doctorId]
     );
 
     return res.status(201).json({ success: true, message: "Appointment created successfully", data: result.rows[0] });
@@ -91,7 +103,7 @@ export async function createAppointment(req, res) {
 
 export async function updateAppointment(req, res) {
     const { id } = req.params;
-    const { appointmentDate, startTime, endTime, reason, status, patientId, doctorId } = req.body;
+    const { startTime, endTime, reason, status, patientId, doctorId } = req.body;
 
     // Check appointment exists
     const existing = await fetchAppointmentById(id);
@@ -102,21 +114,33 @@ export async function updateAppointment(req, res) {
     const current = existing.rows[0];
 
     // Use provided values or fall back to current
-    const finalDate = appointmentDate || current.appointmentDate;
-    const finalStartTime = startTime || current.start_time;
-    const finalEndTime = endTime || current.end_time;
+    const finalStartTime = startTime || current.startTime;
+    const finalEndTime = endTime || current.endTime;
     const finalDoctorId = doctorId || current.doctorId;
     const finalPatientId = patientId || current.patientId;
 
-    // Disallow Sundays (Clinic is closed)
-    const updateDateObj = new Date(`${finalDate}T12:00:00`);
-    if (updateDateObj.getDay() === 0) {
-        throw new AppError("The clinic is closed on Sundays. Please select a date from Monday to Saturday.", 400);
+    const start = new Date(finalStartTime);
+    const end = new Date(finalEndTime);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw new AppError("Invalid startTime or endTime", 400);
     }
 
     // Validate start time < end time
-    if (finalStartTime >= finalEndTime) {
+    if (start >= end) {
         throw new AppError("Start time must be before end time", 400);
+    }
+
+    // Format start time in Asia/Kolkata timezone to check for Sunday
+    const startFormatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Kolkata",
+        weekday: "long"
+    });
+    const weekday = startFormatter.format(start);
+
+    // Disallow Sundays (Clinic is closed)
+    if (weekday === "Sunday") {
+        throw new AppError("The clinic is closed on Sundays. Please select a date from Monday to Saturday.", 400);
     }
 
     // Check patient exists
@@ -134,31 +158,29 @@ export async function updateAppointment(req, res) {
     // Check for overlapping appointments (exclude this appointment itself)
     const overlap = await checkAppointmentOverlap({
         doctorId: finalDoctorId,
-        appointmentDate: finalDate,
-        startTime: finalStartTime,
-        endTime: finalEndTime,
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
         excludeId: parseInt(id)
     });
 
     if (overlap) {
         throw new AppError(
-            `Appointment conflicts with an existing appointment (${overlap.start_time} - ${overlap.end_time}). Please choose a different time slot.`,
+            `Appointment conflicts with an existing appointment. Please choose a different time slot.`,
             409
         );
     }
 
     const result = await pool.query(
         `UPDATE appointment
-         SET "appointmentDate" = $1::date,
-             start_time = $2::time,
-             end_time = $3::time,
-             reason = COALESCE($4, reason),
-             status = COALESCE($5, status),
-             "patientId" = $6,
-             "doctorId" = $7
-         WHERE id = $8
-         RETURNING id, to_char("appointmentDate", 'YYYY-MM-DD') as "appointmentDate", start_time, end_time, status, reason, "patientId", "doctorId", "createdAt"`,
-        [finalDate, finalStartTime, finalEndTime, reason, status, finalPatientId, finalDoctorId, id]
+         SET "startTime" = $1::timestamptz,
+             "endTime" = $2::timestamptz,
+             reason = COALESCE($3, reason),
+             status = COALESCE($4, status),
+             "patientId" = $5,
+             "doctorId" = $6
+         WHERE id = $7
+         RETURNING id, "startTime", "endTime", status, reason, "patientId", "doctorId", "createdAt"`,
+        [start.toISOString(), end.toISOString(), reason, status, finalPatientId, finalDoctorId, id]
     );
 
     return res.status(200).json({ success: true, message: "Appointment updated successfully", data: result.rows[0] });

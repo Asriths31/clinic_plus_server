@@ -46,10 +46,8 @@ CREATE TABLE IF NOT EXISTS doctor (
 -- Appointment table
 CREATE TABLE IF NOT EXISTS appointment (
   id SERIAL PRIMARY KEY,
-  "appointmentDate" DATE NOT NULL,
-  "appointmentTime" VARCHAR(20),
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
+  "startTime" TIMESTAMPTZ NOT NULL,
+  "endTime" TIMESTAMPTZ NOT NULL,
   status VARCHAR(20) DEFAULT 'SCHEDULED',
   reason TEXT,
   "patientId" INTEGER NOT NULL REFERENCES patient(id) ON DELETE CASCADE,
@@ -101,24 +99,22 @@ BEGIN
   END IF;
 
   -- Appointment columns
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='appointment' AND column_name='start_time') THEN
-    ALTER TABLE appointment ADD COLUMN start_time TIME;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='appointment' AND column_name='startTime') THEN
+    ALTER TABLE appointment ADD COLUMN "startTime" TIMESTAMPTZ;
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='appointment' AND column_name='end_time') THEN
-    ALTER TABLE appointment ADD COLUMN end_time TIME;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='appointment' AND column_name='endTime') THEN
+    ALTER TABLE appointment ADD COLUMN "endTime" TIMESTAMPTZ;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='appointment' AND column_name='reason') THEN
     ALTER TABLE appointment ADD COLUMN reason TEXT;
   END IF;
-
-  ALTER TABLE appointment ALTER COLUMN "appointmentTime" DROP NOT NULL;
 END $$;
 
 -- ============================================================
 -- Indexes for appointment conflict detection & date search
 -- ============================================================
-CREATE INDEX IF NOT EXISTS idx_appointment_doctor_date ON appointment ("doctorId", "appointmentDate");
-CREATE INDEX IF NOT EXISTS idx_appointment_date ON appointment ("appointmentDate");
+CREATE INDEX IF NOT EXISTS idx_appointment_doctor_startTime ON appointment ("doctorId", "startTime");
+CREATE INDEX IF NOT EXISTS idx_appointment_startTime ON appointment ("startTime");
 CREATE INDEX IF NOT EXISTS idx_appointment_patient ON appointment ("patientId");
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
 CREATE INDEX IF NOT EXISTS idx_doctor_email ON doctor (email);

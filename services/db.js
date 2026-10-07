@@ -42,7 +42,7 @@ export async function fetchDoctorById(id) {
 
 export async function fetchAppointments(dateFilter, patientId, doctorId) {
   let query = `
-    SELECT a.id, to_char(a."appointmentDate", 'YYYY-MM-DD') as "appointmentDate", a.start_time, a.end_time, a.status, a.reason,
+    SELECT a.id, a."startTime", a."endTime", a.status, a.reason,
            a."patientId", a."doctorId", a."createdAt",
            p."userName" as patient_name, p.email as patient_email,
            d.name as doctor_name, d.specialization as doctor_specialization
@@ -55,7 +55,7 @@ export async function fetchAppointments(dateFilter, patientId, doctorId) {
 
   if (dateFilter) {
     params.push(dateFilter);
-    query += ` AND a."appointmentDate"::date = $${params.length}::date`;
+    query += ` AND (a."startTime" AT TIME ZONE 'Asia/Kolkata')::date = $${params.length}::date`;
   }
   
   if (patientId) {
@@ -68,7 +68,7 @@ export async function fetchAppointments(dateFilter, patientId, doctorId) {
     query += ` AND a."doctorId" = $${params.length}`;
   }
 
-  query += ` ORDER BY a."appointmentDate" DESC, a.start_time ASC`;
+  query += ` ORDER BY a."startTime" DESC`;
 
   const result = await pool.query(query, params);
   return result.rows;
@@ -76,7 +76,7 @@ export async function fetchAppointments(dateFilter, patientId, doctorId) {
 
 export async function fetchAppointmentById(id) {
   const result = await pool.query(`
-    SELECT a.id, to_char(a."appointmentDate", 'YYYY-MM-DD') as "appointmentDate", a.start_time, a.end_time, a.status, a.reason,
+    SELECT a.id, a."startTime", a."endTime", a.status, a.reason,
            a."patientId", a."doctorId", a."createdAt",
            p."userName" as patient_name, p.email as patient_email,
            d.name as doctor_name, d.specialization as doctor_specialization
@@ -95,18 +95,17 @@ export async function fetchAppointmentById(id) {
  *
  * excludeId is used during UPDATE to avoid conflicting with itself.
  */
-export async function checkAppointmentOverlap({ doctorId, appointmentDate, startTime, endTime, excludeId = 0 }) {
+export async function checkAppointmentOverlap({ doctorId, startTime, endTime, excludeId = 0 }) {
   const query = `
-    SELECT id, start_time, end_time
+    SELECT id, "startTime", "endTime"
     FROM appointment
     WHERE "doctorId" = $1
-      AND "appointmentDate"::date = $2::date
       AND status != 'CANCELLED'
-      AND id != $3
-      AND (start_time - interval '15 minutes' < $5::time AND end_time + interval '15 minutes' > $4::time)
+      AND id != $2
+      AND ("startTime" - interval '15 minutes' < $4::timestamptz AND "endTime" + interval '15 minutes' > $3::timestamptz)
     LIMIT 1
   `;
-  const result = await pool.query(query, [doctorId, appointmentDate, excludeId, startTime, endTime]);
+  const result = await pool.query(query, [doctorId, excludeId, startTime, endTime]);
   return result.rows.length > 0 ? result.rows[0] : null;
 }
 
@@ -126,7 +125,7 @@ export async function fetchDashboardStats() {
   const patients = await pool.query(`SELECT COUNT(*) as count FROM patient`);
   const doctors = await pool.query(`SELECT COUNT(*) as count FROM doctor`);
   const appointments = await pool.query(
-    `SELECT COUNT(*) as count FROM appointment WHERE status = 'SCHEDULED' AND "appointmentDate" >= CURRENT_DATE`
+    `SELECT COUNT(*) as count FROM appointment WHERE status = 'SCHEDULED' AND "startTime" >= NOW()`
   );
   return {
     totalPatients: parseInt(patients.rows[0].count),
